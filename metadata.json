@@ -1,0 +1,6 @@
+{
+  "name": "Suneung Math Arena",
+  "description": "AI-powered real-time Suneung Math No. 21 level variant game with personalized expert CSAT encouragement systems.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
