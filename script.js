@@ -117,15 +117,32 @@ const BOT_POOL = [
 ];
 
 // Audio synthesizer trigger
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+let audioCtx = null;
+function getAudioContext() {
+  if (audioCtx) return audioCtx;
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (AudioContextClass) {
+      audioCtx = new AudioContextClass();
+    }
+  } catch (e) {
+    console.warn("AudioContext initialization failed or blocked in this browser sandbox:", e);
+  }
+  return audioCtx;
+}
+
 function playSfx(type) {
   try {
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
+    const ctx = getAudioContext();
+    if (!ctx) return;
 
-    const now = audioCtx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    const now = ctx.currentTime;
+
 
     if (type === "correct") {
       // Harmonic bubble up
@@ -185,21 +202,25 @@ function playSfx(type) {
 // LaTeX custom compiler
 function renderMathToHtml(text) {
   if (!text) return "";
-  // Access and parse content raw to ensure double backslash newline environments are preserved
   const normalizedText = text;
+  const isKatexLoaded = typeof window.katex !== "undefined";
   
   const blocks = normalizedText.split("$$");
   return blocks.map((block, bIdx) => {
     // Odd blocks are math displays
     if (bIdx % 2 !== 0) {
-      try {
-        const html = katex.renderToString(block, {
-          displayMode: true,
-          throwOnError: false,
-        });
-        return `<div class="my-4 overflow-x-auto select-none font-mono text-cyan-200 drop-shadow-[0_0_8px_rgba(34,211,238,0.25)] text-center text-lg md:text-xl">${html}</div>`;
-      } catch (err) {
-        return `<pre class="text-red-400 p-2 bg-slate-950/50 rounded">${block}</pre>`;
+      if (isKatexLoaded) {
+        try {
+          const html = window.katex.renderToString(block, {
+            displayMode: true,
+            throwOnError: false,
+          });
+          return `<div class="my-4 overflow-x-auto select-none font-mono text-cyan-200 drop-shadow-[0_0_8px_rgba(34,211,238,0.25)] text-center text-lg md:text-xl">${html}</div>`;
+        } catch (err) {
+          return `<div class="my-4 overflow-x-auto font-mono text-cyan-300 text-center text-base">$$${block}$$</div>`;
+        }
+      } else {
+        return `<div class="my-4 overflow-x-auto font-mono text-cyan-300 text-center text-base bg-slate-950/40 p-3 rounded-lg border border-slate-800">$$${block}$$</div>`;
       }
     }
 
@@ -207,14 +228,18 @@ function renderMathToHtml(text) {
     const inlineParts = block.split("$");
     return inlineParts.map((part, pIdx) => {
       if (pIdx % 2 !== 0) {
-        try {
-          const html = katex.renderToString(part, {
-            displayMode: false,
-            throwOnError: false,
-          });
-          return `<span class="inline select-none font-mono text-cyan-200 mx-1 drop-shadow-[0_0_4px_rgba(34,211,238,0.15)] bg-slate-900/50 px-1 py-0.5 rounded border border-cyan-500/10">${html}</span>`;
-        } catch (err) {
-          return `<span class="text-red-400">$${part}$</span>`;
+        if (isKatexLoaded) {
+          try {
+            const html = window.katex.renderToString(part, {
+              displayMode: false,
+              throwOnError: false,
+            });
+            return `<span class="inline select-none font-mono text-cyan-200 mx-1 drop-shadow-[0_0_4px_rgba(34,211,238,0.15)] bg-slate-900/50 px-1 py-0.5 rounded border border-cyan-500/10">${html}</span>`;
+          } catch (err) {
+            return `<span class="inline font-mono text-cyan-300 bg-slate-900/50 px-1 py-0.5 rounded border border-cyan-500/10">$${part}$</span>`;
+          }
+        } else {
+          return `<span class="inline font-mono text-cyan-300 bg-slate-900/50 px-1 py-0.5 rounded border border-cyan-500/10">$${part}$</span>`;
         }
       }
       return part;
@@ -226,12 +251,14 @@ function renderMathToHtml(text) {
 const STATE_STORAGE_KEY = "suneung_math_arena_state_v2";
 
 function loadQuestions() {
-  const saved = localStorage.getItem("math_arena_custom_questions");
-  if (saved) {
-    try {
+  try {
+    const saved = localStorage.getItem("math_arena_custom_questions");
+    if (saved) {
       const parsed = JSON.parse(saved);
       return [...INITIAL_QUESTIONS, ...parsed];
-    } catch (e) {}
+    }
+  } catch (e) {
+    console.warn("Storage item fetch blocked or failed:", e);
   }
   return [...INITIAL_QUESTIONS];
 }
@@ -242,7 +269,9 @@ function saveCustomQuestion(newQ) {
     const parsed = JSON.parse(saved);
     parsed.push(newQ);
     localStorage.setItem("math_arena_custom_questions", JSON.stringify(parsed));
-  } catch (e) {}
+  } catch (e) {
+    console.warn("Storage writing blocked or failed:", e);
+  }
 }
 
 const state = {
@@ -450,12 +479,16 @@ function startPlayTimer() {
     }
   }, 1000);
 
+  // Generate a unique session or round ID to prevent bot timeouts from executing in outdated matches
+  const currentRoundId = Math.random().toString(36).substring(2, 9);
+  state.room.currentRoundId = currentRoundId;
+
   // Trigger simulated bot answers staggered
   state.room.players.forEach(p => {
     if (p.isBot) {
       const delay = p.minSpeed + Math.random() * (p.maxSpeed - p.minSpeed);
       setTimeout(() => {
-        if (!state.room || state.room.status !== "PLAY" || p.isSubmitted) return;
+        if (!state.room || state.room.currentRoundId !== currentRoundId || state.room.status !== "PLAY" || p.isSubmitted) return;
         submitPlayerAnswer(p.uuid, simulateBotChoice(p));
       }, delay);
     }
@@ -847,7 +880,7 @@ window.studentJoinRoom = function(e) {
   if (isCheat) {
     triggerToast(`[${name}] 특제 만점 치트 발동! 99,999점에서 전장을 개시합니다.`);
   } else {
-    triggerToast(`[${name}] 님, 수리 대결 대기마당입장 성공!`);
+    triggerToast(`[${name}] 님, 수리 대결 대기마당 입장 성공!`);
   }
 
   if (state.room && state.room.pin === pin) {
@@ -867,22 +900,24 @@ window.studentJoinRoom = function(e) {
   } else {
     // Solo Sandbox Practice Room Spin-Up!
     const soloQIds = state.questions.slice(0, 3).map(q => q.id);
-    createRoom(soloQIds);
-    state.room.pin = pin; // force input pin
-    
-    // Add real student in
-    const userRec = {
-      uuid: "student-user",
-      nickname: name,
-      score: startScore,
-      streak: 0,
-      lastScoreAdded: 0,
-      isSubmitted: false,
-      lastAnswerIndex: -1,
-      rankChange: 0,
-      isBot: false
-    };
-    state.room.players.push(userRec);
+    const success = createRoom(soloQIds);
+    if (success && state.room) {
+      state.room.pin = pin; // force input pin
+      
+      // Add real student in
+      const userRec = {
+        uuid: "student-user",
+        nickname: name,
+        score: startScore,
+        streak: 0,
+        lastScoreAdded: 0,
+        isSubmitted: false,
+        lastAnswerIndex: -1,
+        rankChange: 0,
+        isBot: false
+      };
+      state.room.players.push(userRec);
+    }
   }
 
   render();
@@ -973,8 +1008,12 @@ function render() {
   root.innerHTML = html;
 
   // Render Lucide custom icons
-  if (window.lucide) {
-    window.lucide.createIcons();
+  if (window.lucide && typeof window.lucide.createIcons === "function") {
+    try {
+      window.lucide.createIcons();
+    } catch (e) {
+      console.warn("Lucide parsing temporary error bypassed", e);
+    }
   }
 
   // Inject beautiful KaTeX parse
