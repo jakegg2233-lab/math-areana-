@@ -1,0 +1,113 @@
+/* Custom style sheet for Suneung Math Arena */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700;800&display=swap');
+
+/* Animations */
+@keyframes pulse-slow {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.08); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-10px) rotate(2deg); }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 15px rgba(34, 211, 238, 0.2); }
+  50% { box-shadow: 0 0 30px rgba(34, 211, 238, 0.45); }
+}
+
+@keyframes particle-fade {
+  0% { transform: translate(0, 0) scale(1); opacity: 1; }
+  100% { transform: translate(var(--tw-x, 30px), var(--tw-y, -30px)) scale(0); opacity: 0; }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 6s ease-in-out infinite;
+}
+
+.animate-float {
+  animation: float 5s ease-in-out infinite;
+}
+
+.animate-glow {
+  animation: glow-pulse 3s infinite;
+}
+
+/* Base custom definitions */
+body {
+  background-color: #0c0f1a;
+  background-image: radial-gradient(circle at 50% 15%, #151b30 0%, #0c0f1a 70%);
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.5);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(56, 189, 248, 0.2);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(56, 189, 248, 0.4);
+}
+
+/* Math background grids */
+.bg-math-grid {
+  background-image: linear-gradient(to right, rgba(255, 255, 255, 0.012) 1px, transparent 1px),
+                    linear-gradient(to bottom, rgba(255, 255, 255, 0.012) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* Glow Borders */
+.border-neon-cyan {
+  border-color: rgba(34, 211, 238, 0.25);
+  box-shadow: 0 0 12px rgba(34, 211, 238, 0.15);
+}
+.border-neon-cyan:hover {
+  border-color: rgba(34, 211, 238, 0.5);
+  box-shadow: 0 0 18px rgba(34, 211, 238, 0.25);
+}
+
+.border-neon-purple {
+  border-color: rgba(168, 85, 247, 0.25);
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.15);
+}
+.border-neon-purple:hover {
+  border-color: rgba(168, 85, 247, 0.5);
+  box-shadow: 0 0 18px rgba(168, 85, 247, 0.25);
+}
+
+/* Math symbols decorations */
+.math-decor {
+  font-family: 'Outfit', sans-serif;
+  user-select: none;
+  font-weight: 800;
+  pointer-events: none;
+  opacity: 0.04;
+  position: absolute;
+}
+
+/* KaTeX custom style classes matching original dark slate neon themes */
+.math-renderer .katex-display {
+  margin: 1rem 0;
+  padding: 0.75rem;
+  background: rgba(15, 23, 42, 0.4);
+  border-radius: 8px;
+  border: 1px solid rgba(34, 211, 238, 0.1);
+  box-shadow: inset 0 0 12px rgba(34, 211, 238, 0.05);
+}
+
+/* Particles bubble */
+.firework-particle {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  animation: particle-fade 1.2s ease-out forwards;
+}
